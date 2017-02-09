@@ -88,9 +88,15 @@ app.post('/github', (req, res) => {
 
   let data = req.body;
 
-  //console.log(util.inspect(req.body, { colors: true, depth: null }));
+  console.log(util.inspect(req.body, { colors: true, depth: null }));
 
-  if(!/refs\/tags\/.+/.test(data.ref)) return;
+  if(!/refs\/tags\/.+/.test(data.ref)){
+    res.json({
+      status: 'ignored'
+    });
+
+    return;
+  }
 
   let tag = /refs\/tags\/(.+)/.exec(data.ref)[1];
   let githubSender = data.sender.login;
@@ -126,7 +132,7 @@ app.get('/circleci', (req, res) => {
   let commitHash = req.query.sha1;
   let messageIndex = messages.findIndex(element => element.tag == tag && element.commitHash == commitHash);
 
-  //console.log(util.inspect(req.body, { colors: true, depth: null }));
+  console.log(util.inspect(req.query, { colors: true, depth: null }));
 
   if(messageIndex >= 0) return;
 
@@ -153,11 +159,11 @@ app.post('/circleci', (req, res) => {
   let buildNum = data.buildNum;
   let messageIndex = messages.find(element => element.buildNum == buildNum);
 
-  //console.log(util.inspect(req.body, { colors: true, depth: null }));
+  console.log(util.inspect(req.body, { colors: true, depth: null }));
 
   if(messageIndex >= 0) return;
 
-  let dockerStep = data.payload.steps.find(element => element.name == "docker push mogo/ui_core:$CIRCLE_TAG");
+  let dockerStep = data.payload.steps.find(element => element.name == "docker push affirmix/test");
 
   let circleRequest = https.request(url.parse(dockerStep.actions[0].output_url), circleResponse => {
     let dataString = '';
@@ -189,7 +195,7 @@ app.post('/dockerhub', (req, res) => {
   let dockerHash = data.push_data.images.pop();
   let messageIndex = messages.find(element => element.dockerHash == dockerHash);
 
-  //console.log(util.inspect(req.body, { colors: true, depth: null }));
+  console.log(util.inspect(req.body, { colors: true, depth: null }));
 
   if(messageIndex >= 0) return;
 
