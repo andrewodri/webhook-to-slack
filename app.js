@@ -2,6 +2,7 @@ const bodyParser = require('body-parser');
 const express = require('express');
 const https = require('https');
 const argv = require('minimist')(process.argv);
+const moment = require('moment');
 const slack = require('slack');
 const url = require('url');
 const util = require('util');
@@ -129,7 +130,7 @@ app.get('/circleci', (req, res) => {
 
   console.log(util.inspect(req.query, { colors: true, depth: null }));
 
-  if(messageIndex >= 0){
+  if(messageIndex < 0){
     res.json({ status: 'ignored' });
     return;
   }
@@ -155,16 +156,17 @@ app.post('/circleci', (req, res) => {
   let githubRepo = data.reponame;
   let commitHash = data.vcs_revision;
   let buildNum = data.buildNum;
-  let messageIndex = messages.find(element => element.buildNum == buildNum);
+  let messageIndex = messages.findIndex(element => element.buildNum == buildNum);
 
   console.log(util.inspect(req.body, { colors: true, depth: null }));
 
-  if(messageIndex >= 0){
+  if(messageIndex < 0){
     res.json({ status: 'ignored' });
     return;
   }
 
   let dockerStep = data.payload.steps.find(element => element.name == "docker push affirmix/test");
+  let dockerPushedAt = moment(dockerStep.end_time);
 
   let circleRequest = https.request(url.parse(dockerStep.actions[0].output_url), circleResponse => {
     let dataString = '';
@@ -179,6 +181,7 @@ app.post('/circleci', (req, res) => {
   });
 
   let updates = {
+    dockerPushedAt,
     buildTime: data.build_time_millis,
     buildResult: data.outcome,
     status: data.outcome == 'success' ? 'circleci-success' : 'circleci-failure'
@@ -193,12 +196,12 @@ app.post('/dockerhub', (req, res) => {
   // https://docs.docker.com/docker-hub/webhooks/
 
   let data = req.body;
-  let dockerHash = data.push_data.images.pop();
-  let messageIndex = messages.find(element => element.dockerHash == dockerHash);
+  let dockerPushedAt = moment.unix(data.push_data.pushed_at);
+  let messageIndex = messages.findIndex(element => element.dockerPushedAt.isSame(dockerPushedAt, 'minute'));
 
   console.log(util.inspect(req.body, { colors: true, depth: null }));
 
-  if(messageIndex >= 0){
+  if(messageIndex < 0){
     res.json({ status: 'ignored' });
     return;
   }
