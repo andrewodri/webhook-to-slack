@@ -91,10 +91,7 @@ app.post('/github', (req, res) => {
   console.log(util.inspect(req.body, { colors: true, depth: null }));
 
   if(!/refs\/tags\/.+/.test(data.ref)){
-    res.json({
-      status: 'ignored'
-    });
-
+    res.json({ status: 'ignored' });
     return;
   }
 
@@ -121,9 +118,7 @@ app.post('/github', (req, res) => {
     });
   });
 
-  res.json({
-    status: 'ok'
-  });
+  res.json({ status: 'ok' });
 });
 
 app.get('/circleci', (req, res) => {
@@ -134,7 +129,10 @@ app.get('/circleci', (req, res) => {
 
   console.log(util.inspect(req.query, { colors: true, depth: null }));
 
-  if(messageIndex >= 0) return;
+  if(messageIndex >= 0){
+    res.json({ status: 'ignored' });
+    return;
+  }
 
   let updates = {
     buildNum: req.query.buildNum,
@@ -161,7 +159,10 @@ app.post('/circleci', (req, res) => {
 
   console.log(util.inspect(req.body, { colors: true, depth: null }));
 
-  if(messageIndex >= 0) return;
+  if(messageIndex >= 0){
+    res.json({ status: 'ignored' });
+    return;
+  }
 
   let dockerStep = data.payload.steps.find(element => element.name == "docker push affirmix/test");
 
@@ -197,7 +198,10 @@ app.post('/dockerhub', (req, res) => {
 
   console.log(util.inspect(req.body, { colors: true, depth: null }));
 
-  if(messageIndex >= 0) return;
+  if(messageIndex >= 0){
+    res.json({ status: 'ignored' });
+    return;
+  }
 
   let updates = {
     dockerhubUrl: data.repository.repo_url,
