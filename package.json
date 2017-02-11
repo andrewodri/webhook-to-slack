@@ -10,7 +10,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/npm/npm.git"
+    "url": "https://github.com/andrewodri/webhook-to-slack.git"
   },
   "dependencies": {
     "body-parser": "^1.16.0",

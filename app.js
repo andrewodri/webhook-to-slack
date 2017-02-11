@@ -83,13 +83,14 @@ let template = {
 };
 
 let messages = [];
+let dockerhubWebhooks = [];
 
 app.post('/github', (req, res) => {
   // https://developer.github.com/v3/activity/events/types/#createevent
 
   let data = req.body;
 
-  console.log(util.inspect(req.body, { colors: true, depth: null }));
+  // console.log(util.inspect(req.body, { colors: true, depth: null }));
 
   if(!/refs\/tags\/.+/.test(data.ref)){
     res.json({ status: 'ignored' });
@@ -114,7 +115,7 @@ app.post('/github', (req, res) => {
       githubRepo,
       githubUrl,
       commitHash,
-      status: 'github-success',
+      githubStatus: 'success',
       ts: postMessage.ts
     });
   });
@@ -128,7 +129,7 @@ app.get('/circleci', (req, res) => {
   let commitHash = req.query.sha1;
   let messageIndex = messages.findIndex(element => element.tag == tag && element.commitHash == commitHash);
 
-  console.log(util.inspect(req.query, { colors: true, depth: null }));
+  // console.log(util.inspect(req.query, { colors: true, depth: null }));
 
   if(messageIndex < 0){
     res.json({ status: 'ignored' });
@@ -138,7 +139,7 @@ app.get('/circleci', (req, res) => {
   let updates = {
     buildNum: req.query.buildNum,
     circleciUrl: req.query.buildUrl,
-    status: 'circleci-progress'
+    circleciStatus: req.query.status
   };
 
   messages[messageIndex] = Object.assign(messages[messageIndex], updates);
@@ -156,17 +157,18 @@ app.post('/circleci', (req, res) => {
   let githubRepo = data.reponame;
   let commitHash = data.vcs_revision;
   let buildNum = data.buildNum;
-  let messageIndex = messages.findIndex(element => element.buildNum == buildNum);
+  //let messageIndex = messages.findIndex(element => element.buildNum == buildNum);
 
-  console.log(util.inspect(req.body, { colors: true, depth: null }));
+  // console.log(util.inspect(req.body, { colors: true, depth: null }));
+
+  let dockerStep = data.payload.steps.find(element => element.name == "docker push affirmix/test");
+  let dockerPushedAt = moment(dockerStep.end_time);
+  let dockerWebhook = dockerWebhooks.find(element => dockerPushedAt.isSame(element.push_data.pushed_at, 'minute'));
 
   if(messageIndex < 0){
     res.json({ status: 'ignored' });
     return;
   }
-
-  let dockerStep = data.payload.steps.find(element => element.name == "docker push affirmix/test");
-  let dockerPushedAt = moment(dockerStep.end_time);
 
   let circleRequest = https.request(url.parse(dockerStep.actions[0].output_url), circleResponse => {
     let dataString = '';
@@ -183,8 +185,9 @@ app.post('/circleci', (req, res) => {
   let updates = {
     dockerPushedAt,
     buildTime: data.build_time_millis,
-    buildResult: data.outcome,
-    status: data.outcome == 'success' ? 'circleci-success' : 'circleci-failure'
+    circleciStatus: data.status,
+    dockerhubUrl: dockerWebhook.repository.repo_url,
+    dockerhubStatus: dockerWebhook.repository.status
   };
 
   messages[messageIndex] = Object.assign(messages[messageIndex], updates);
@@ -192,39 +195,67 @@ app.post('/circleci', (req, res) => {
   res.json(messages[messageIndex]);
 });
 
+/*
+{ push_data:
+   { pushed_at: 1486624587,
+     images: [],
+     tag: 'latest',
+     pusher: 'affirmix' },
+  callback_url: 'https://registry.hub.docker.com/u/affirmix/test/hook/2310hcb02ij004fhde2fbcj0d15hcd35c/',
+  repository:
+   { status: 'Active',
+     description: '',
+     is_trusted: false,
+     full_description: '',
+     repo_url: 'https://hub.docker.com/r/affirmix/test',
+     owner: 'affirmix',
+     is_official: false,
+     is_private: true,
+     name: 'test',
+     namespace: 'affirmix',
+     star_count: 0,
+     comment_count: 0,
+     date_created: 1486619804,
+     repo_name: 'affirmix/test' } }
+*/
+
 app.post('/dockerhub', (req, res) => {
   // https://docs.docker.com/docker-hub/webhooks/
 
-  let data = req.body;
-  let dockerPushedAt = moment.unix(data.push_data.pushed_at);
-  let messageIndex = messages.findIndex(element => element.dockerPushedAt.isSame(dockerPushedAt, 'minute'));
+  dockerhubWebhooks.push(req.body);
 
-  console.log(util.inspect(req.body, { colors: true, depth: null }));
+  res.json({ status: 'queued' });
 
-  if(messageIndex < 0){
-    res.json({ status: 'ignored' });
-    return;
-  }
-
-  let updates = {
-    dockerhubUrl: data.repository.repo_url,
-    status: 'dockerhub-success'
-  };
-
-  messages[messageIndex] = Object.assign(messages[messageIndex], updates);
-  res.json(messages[messageIndex]);
-});
-
-rtm.message(message => {
-  console.log(util.inspect(message, { colors: true, depth: null }));
-
-  slack.users.list({token}, (err, usersList) => {
-    console.log(util.inspect(usersList, { colors: true, depth: null }));
-
-    let slackUser = message.user;
-    let githubUser = usersList.members.find(element => !element.is_bot && element.profile.skype == 'andrewodri');
-
-  });
+//   let data = req.body;
+//   let dockerPushedAt = moment.unix(data.push_data.pushed_at);
+//   let messageIndex = messages.findIndex(element => element.dockerPushedAt.isSame(dockerPushedAt, 'minute'));
+//
+//   console.log(util.inspect(req.body, { colors: true, depth: null }));
+//
+//   if(messageIndex < 0){
+//     res.json({ status: 'ignored' });
+//     return;
+//   }
+//
+//   let updates = {
+//     dockerhubUrl: data.repository.repo_url,
+//     status: 'dockerhub-success'
+//   };
+//
+//   messages[messageIndex] = Object.assign(messages[messageIndex], updates);
+//   res.json(messages[messageIndex]);
+// });
+//
+// rtm.message(message => {
+//   console.log(util.inspect(message, { colors: true, depth: null }));
+//
+//   slack.users.list({token}, (err, usersList) => {
+//     console.log(util.inspect(usersList, { colors: true, depth: null }));
+//
+//     let slackUser = message.user;
+//     let githubUser = usersList.members.find(element => !element.is_bot && element.profile.skype == 'andrewodri');
+//
+//   });
 });
 
 rtm.team_join(teamJoin => {
