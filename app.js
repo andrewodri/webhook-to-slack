@@ -97,8 +97,10 @@ app.post('/github', (req, res) => {
     return;
   }
 
+  let tag = /refs\/tags\/(.+)/.exec(data.ref)[1];
+
   let message = {
-    tag: /refs\/tags\/(.+)/.exec(data.ref)[1],
+    tag,
     githubSender: data.sender.login,
     githubOwner: data.repository.owner.name,
     githubRepo: data.repository.name,
@@ -156,12 +158,12 @@ app.post('/circleci', (req, res) => {
   let githubRepo = data.reponame;
   let commitHash = data.vcs_revision;
   let buildNum = data.buildNum;
-  //let messageIndex = messages.findIndex(element => element.buildNum == buildNum);
+  let messageIndex = messages.findIndex(element => element.tag == tag && element.commitHash == commitHash);
 
-  // console.log(util.inspect(req.body, { colors: true, depth: null }));
+  console.log(util.inspect(data, { colors: true, depth: null }));
 
-  let dockerStep = data.payload.steps.find(element => element.name == "docker push affirmix/test");
-  let dockerPushedAt = moment(dockerStep.end_time);
+  let dockerStep = data.steps.find(element => element.name == "docker push affirmix/test");
+  let dockerPushedAt = moment(dockerStep.actions[0].end_time);
   let dockerWebhook = dockerWebhooks.find(element => dockerPushedAt.isSame(element.push_data.pushed_at, 'minute'));
 
   if(messageIndex < 0){
@@ -223,6 +225,8 @@ app.post('/dockerhub', (req, res) => {
   // https://docs.docker.com/docker-hub/webhooks/
 
   dockerhubWebhooks.push(req.body);
+
+  console.log(util.inspect(dockerhubWebhooks, { colors: true, depth: null }));
 
   res.json({ status: 'queued' });
 
