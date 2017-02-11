@@ -4,7 +4,8 @@
   "description": "Translate webhook payloads into Slack RTM/Web API integrations",
   "main": "app.js",
   "scripts": {
-    "test": "tape tests/**/*.js"
+    "test": "tape tests/**/*.js",
+    "tag": "git fetch --tags && git tag -a $npm_config_tag -m $npm_config_tag $(git rev-parse HEAD) -f && git push origin --tags -f"
   },
   "author": "Andrew Odri",
   "license": "MIT",

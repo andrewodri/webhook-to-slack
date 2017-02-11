@@ -7,7 +7,7 @@ machine:
 
 deployment:
   docker:
-    branch: master
+    tag: test
     commands:
       - docker login -e $DOCKER_EMAIL -u $DOCKER_USER -p $DOCKER_PASS
       - docker build --rm=false -t affirmix/test .

@@ -97,28 +97,26 @@ app.post('/github', (req, res) => {
     return;
   }
 
-  let tag = /refs\/tags\/(.+)/.exec(data.ref)[1];
-  let githubSender = data.sender.login;
-  let githubOwner = data.repository.owner.name;
-  let githubRepo = data.repository.name;
-  let githubUrl = `${data.repository.url}/tree/${tag}`;
-  let commitHash = data.after || data.head_commit.id;
+  let message = {
+    tag: /refs\/tags\/(.+)/.exec(data.ref)[1],
+    githubSender: data.sender.login,
+    githubOwner: data.repository.owner.name,
+    githubRepo: data.repository.name,
+    githubUrl: `${data.repository.url}/tree/${tag}`,
+    commitHash: data.after || data.head_commit.id,
+    githubStatus: 'success'
+  };
 
   slack.chat.postMessage(Object.assign({
     token,
     channel: 'G27UFB5JN'
   }, template), (err, postMessage) => {
-    messages.push({
-      tag,
-      githubSender,
-      githubOwner,
-      githubRepo,
-      githubUrl,
-      commitHash,
-      githubStatus: 'success',
-      ts: postMessage.ts
-    });
+    message.ts = postMessage.ts;
+
+    messages.push(message);
   });
+
+  console.log(util.inspect(message, { colors: true, depth: null }));
 
   res.json({ status: 'ok' });
 });
@@ -143,6 +141,7 @@ app.get('/circleci', (req, res) => {
   };
 
   messages[messageIndex] = Object.assign(messages[messageIndex], updates);
+  console.log(util.inspect(messages[messageIndex], { colors: true, depth: null }));
   res.json(messages[messageIndex]);
 });
 
@@ -191,6 +190,7 @@ app.post('/circleci', (req, res) => {
   };
 
   messages[messageIndex] = Object.assign(messages[messageIndex], updates);
+  console.log(util.inspect(messages[messageIndex], { colors: true, depth: null }));
   if(data.outcome !== 'success') messages.splice(messageIndex, 1);
   res.json(messages[messageIndex]);
 });
