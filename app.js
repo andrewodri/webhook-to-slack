@@ -164,7 +164,7 @@ app.post('/circleci', (req, res) => {
 
   let dockerStep = data.steps.find(element => element.name == "docker push affirmix/test");
   let dockerPushedAt = moment(dockerStep.actions[0].end_time);
-  let dockerWebhook = dockerWebhooks.find(element => dockerPushedAt.isSame(element.push_data.pushed_at, 'minute'));
+  let dockerWebhook = dockerhubWebhooks.find(element => dockerPushedAt.isSame(element.push_data.pushed_at, 'minute'));
 
   if(messageIndex < 0){
     res.json({ status: 'ignored' });
